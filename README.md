@@ -1,10 +1,10 @@
-🧠 Computer Vision Projects Repository
+## 🧠 Computer Vision Projects Repository
 
 Welcome to the Computer Vision Projects repository!
 
 This repository contains a collection of diverse and practical computer vision implementations, ranging from classical image processing to deep learning–based models. Each project is designed to be educational, modular, and easy to understand, whether you're a beginner exploring vision concepts or an advanced user looking for ready-to-use components.
 
-📌 Repository Overview
+#### 📌 Repository Overview
 
 This repository includes:
 
@@ -31,7 +31,7 @@ project-name/
 │── samples/         # Example images or demo results  
 │── requirements.txt
 
-🎯 Purpose of This Repository
+#### 🎯 Purpose of This Repository
 
 This repository was created to:
 
@@ -47,7 +47,7 @@ Document personal hands-on experience in vision-based AI development
 
 Whether you're studying for interviews, doing research, or building your own model, these projects can serve as a reference.
 
-🚀 Featured Projects (Examples)
+#### 🚀 Featured Projects (Examples)
 
 (Replace or expand according to your actual projects)
 
@@ -83,23 +83,25 @@ Homography estimation
 
 RANSAC for outlier removal
 
-🧪 Installation
+##### 🧪 Installation
 
 Clone the repository:
-
+```bash
 git clone https://github.com/your-username/computer-vision-projects.git
+
 cd computer-vision-projects
-
+```
 Install dependencies:
-
+```bash
 pip install -r requirements.txt
-
-📊 Datasets
+```
+#### 📊 Datasets
 
 Datasets are not included in the repo.
+
 Each project folder contains instructions for how to download or prepare the required dataset.
 
-📸 Results & Visualizations
+#### 📸 Results & Visualizations
 
 Most projects include:
 
@@ -111,7 +113,7 @@ Output images with predictions
 
 Demo notebooks for quick testing
 
-🤝 Contributing
+#### 🤝 Contributing
 
 Contributions, improvements, and suggestions are welcome!
 
@@ -125,20 +127,23 @@ Fixing bugs or optimizing code
 
 Providing better visualizations or model improvements
 
-📄 License
+###### 📄 License
 
 This repository is licensed under the MIT License.
 Feel free to use the code for personal, academic, or commercial purposes.
 
-⭐ Support
+###### ⭐ Support
 
 If you find this repository helpful, please consider giving it a star ⭐ to support the work and encourage more project uploads!
 
 If you want, I can also:
 
 ✅ Add GitHub badges
+
 ✅ Generate a logo/banner for the repository
+
 ✅ Create a professional CONTRIBUTING.md
+
 ✅ Write section for each specific project you added
 
 Just tell me!
