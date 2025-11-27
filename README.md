@@ -1,6 +1,7 @@
 🧠 Computer Vision Projects Repository
 
 Welcome to the Computer Vision Projects repository!
+
 This repository contains a collection of diverse and practical computer vision implementations, ranging from classical image processing to deep learning–based models. Each project is designed to be educational, modular, and easy to understand, whether you're a beginner exploring vision concepts or an advanced user looking for ready-to-use components.
 
 📌 Repository Overview
@@ -8,15 +9,21 @@ This repository contains a collection of diverse and practical computer vision i
 This repository includes:
 
 ✔️ Image classification (deep learning models: CNNs, transfer learning, fine-tuning)
+
 ✔️ Object detection (YOLO, SSD, OpenCV-based techniques)
+
 ✔️ Image segmentation (semantic + instance segmentation, U-Net models)
+
 ✔️ Feature extraction & matching (SIFT, ORB, feature descriptors)
+
 ✔️ Traditional image processing (filters, edge detection, morphology)
+
 ✔️ Computer vision utilities (preprocessing pipelines, augmentation, visualization tools)
 
 Each project lives in its own directory with clear structure:
 
 project-name/
+
 │── README.md        # Detailed explanation of the project  
 │── notebooks/       # Jupyter notebooks for experiments  
 │── src/             # Main source code  
