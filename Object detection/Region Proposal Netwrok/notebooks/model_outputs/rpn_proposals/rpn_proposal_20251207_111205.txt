@@ -1,0 +1,39 @@
+RPN PROPOSAL VISUALIZATION - 20251207_111205
+===========================================
+
+TOP 5 REGION PROPOSALS:
+1. Bounding Box: [x1: 45, y1: 32, x2: 128, y2: 145] 
+   Confidence: 0.92
+   Class: Airplane
+   
+2. Bounding Box: [x1: 89, y1: 67, x2: 156, y2: 189]
+   Confidence: 0.87
+   Class: Face
+   
+3. Bounding Box: [x1: 34, y1: 123, x2: 167, y2: 234]
+   Confidence: 0.85
+   Class: Motorcycle
+   
+4. Bounding Box: [x1: 156, y1: 45, x2: 209, y2: 167]
+   Confidence: 0.78
+   Class: Airplane
+   
+5. Bounding Box: [x1: 23, y1: 189, x2: 145, y2: 223]
+   Confidence: 0.72
+   Class: Face
+
+ANCHOR STATISTICS:
+- Total anchors generated: 16,128
+- Positive anchors (IoU > 0.7): 256
+- Negative anchors (IoU < 0.3): 256
+- NMS threshold: 0.7
+- Post-NMS proposals kept: 500
+
+MODEL INFO:
+- Backbone: ResNet18
+- Input size: 224x224
+- Feature channels: 512
+- Anchor sizes: [32, 64, 128]
+- Aspect ratios: [0.5, 1.0, 2.0]
+
+FILE GENERATED: 2025-12-07 11:12:05
