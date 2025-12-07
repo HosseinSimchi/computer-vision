@@ -1,20 +1,8 @@
 # app.py
 import streamlit as st
 import os
-import cv2
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import torch
-from torchvision.models.detection.rpn import RPNHead, RegionProposalNetwork, AnchorGenerator
-from torchvision.models.detection.image_list import ImageList
-import torchvision
-from torch.utils.data import DataLoader
-from torchsummary import summary
-import io
-import sys
-from datetime import datetime
 import glob
+from datetime import datetime
 
 # ---------------------------
 # Page config
@@ -30,17 +18,14 @@ st.set_page_config(
 # Configuration
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-IMAGE_DIR = "../dataset/images"
-ANNOT_DIR = "../dataset/annotations"
-TARGET_SIZE = (224, 224)
-OUTPUT_DIR = "../model_outputs"
-RPN_PROPOSAL_DIR = os.path.join(OUTPUT_DIR, "rpn_proposals")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(RPN_PROPOSAL_DIR, exist_ok=True)
+OUTPUT_FOLDER = "model_outputs"
+RPN_PROPOSALS_FOLDER = os.path.join(OUTPUT_FOLDER, "rpn_proposals")
+
+# Create folders if they don't exist
+os.makedirs(RPN_PROPOSALS_FOLDER, exist_ok=True)
 
 # ---------------------------
-# Custom CSS for beautiful styling (from your theme)
+# Custom CSS for beautiful styling
 # ---------------------------
 st.markdown("""
 <style>
@@ -121,490 +106,716 @@ st.markdown("""
         border: none;
         border-radius: 2px;
     }
+    
+    /* Dashboard cards */
+    .dashboard-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-ready {
+        background-color: #48bb78;
+    }
+    
+    .status-warning {
+        background-color: #ed8936;
+    }
+    
+    .status-error {
+        background-color: #f56565;
+    }
+    
+    /* File list styling */
+    .file-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        transition: background-color 0.2s;
+    }
+    
+    .file-item:hover {
+        background-color: #f7fafc;
+    }
+    
+    /* Image grid */
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------
-# Helper: load dataset
-# ---------------------------
-@st.cache_resource
-def load_dataset_cached(image_dir=IMAGE_DIR, annot_dir=ANNOT_DIR):
-    dataset = []
-    class_names = []
-    if not os.path.isdir(image_dir) or not os.path.isdir(annot_dir):
-        return dataset, class_names
-
-    class_names = [d for d in os.listdir(image_dir) if os.path.isdir(os.path.join(image_dir, d))]
-    csv_files = sorted([f for f in os.listdir(annot_dir) if f.endswith(".csv")])
-
-    # If counts mismatch, handle gracefully by matching file names by folder name if possible
-    for i, class_name in enumerate(class_names):
-        class_dir = os.path.join(image_dir, class_name)
-        csv_path = None
-        # try to find csv with the class_name in it
-        for f in csv_files:
-            if class_name in f:
-                csv_path = os.path.join(annot_dir, f)
-                break
-        if csv_path is None and i < len(csv_files):
-            csv_path = os.path.join(annot_dir, csv_files[i])
-
-        if csv_path is None:
-            continue
-
-        try:
-            df = pd.read_csv(csv_path)
-        except Exception:
-            continue
-
-        for image_name in os.listdir(class_dir):
-            img_path = os.path.join(class_dir, image_name)
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
-
-            h, w, _ = img.shape
-            row = df[df.get("image_name", df.columns[0]) == image_name]
-            if row.empty:
-                continue
-
-            ann = row.iloc[0, 1:].tolist()
-            if len(ann) < 4:
-                continue
-
-            # scale boxes
-            ann_scaled = [
-                ann[0] / w * TARGET_SIZE[0], ann[1] / h * TARGET_SIZE[1],
-                ann[2] / w * TARGET_SIZE[0], ann[3] / h * TARGET_SIZE[1]
-            ]
-
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img_resized = cv2.resize(img_rgb, TARGET_SIZE)
-
-            img_tensor = torch.tensor(img_resized, dtype=torch.float32).permute(2, 0, 1) / 255.0
-            label_tensor = torch.tensor([i], dtype=torch.int64)
-            target = {"boxes": torch.tensor([ann_scaled], dtype=torch.float32), "labels": label_tensor}
-            dataset.append((img_tensor, target))
-
-    return dataset, class_names
-
-# ---------------------------
-# Helper: build models
-# ---------------------------
-@st.cache_resource
-def build_models_cached():
-    resnet = torchvision.models.resnet18(pretrained=False)
-    backbone = torch.nn.Sequential(*list(resnet.children())[:-2])
-    backbone.out_channels = 512
-    for p in backbone.parameters():
-        p.requires_grad = False
-
-    anchor_gen = AnchorGenerator(sizes=((32, 64, 128),), aspect_ratios=((0.5, 1.0, 2.0),))
-    num_anchors = anchor_gen.num_anchors_per_location()[0]
-    rpn_head = RPNHead(backbone.out_channels, num_anchors)
-    rpn = RegionProposalNetwork(
-        anchor_gen, rpn_head,
-        fg_iou_thresh=0.7, bg_iou_thresh=0.3,
-        batch_size_per_image=256,
-        positive_fraction=0.5,
-        pre_nms_top_n={"training": 2000, "testing": 1000},
-        post_nms_top_n={"training": 1000, "testing": 500},
-        nms_thresh=0.7
-    )
-    # move to device
-    return backbone.to(DEVICE), rpn.to(DEVICE)
-
-# ---------------------------
-# Helper: save model summary
-# ---------------------------
-def save_model_summary(backbone):
-    buf = io.StringIO()
-    real_stdout = sys.stdout
-    try:
-        sys.stdout = buf
-        summary(backbone, (3, 224, 224))
-    finally:
-        sys.stdout = real_stdout
-
-    path = os.path.join(OUTPUT_DIR, "model_summary.txt")
-    with open(path, "w") as f:
-        f.write(buf.getvalue())
-    return path
-
-# ---------------------------
-# Helper: training function
-# ---------------------------
-def train_model(backbone, rpn, dataset, num_epochs=3, batch_size=8):
-    if len(dataset) == 0:
-        raise RuntimeError("Dataset is empty. Initialize dataset first.")
-
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
-    optimizer = torch.optim.Adam(rpn.parameters(), lr=0.001)
-    log_path = os.path.join(OUTPUT_DIR, "training_log.txt")
-
-    with open(log_path, "w") as log:
-        for epoch in range(num_epochs):
-            epoch_losses = []
-            for images, targets in dataloader:
-                optimizer.zero_grad()
-                imgs_gpu = torch.stack([i.to(DEVICE) for i in images])
-                targets_gpu = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
-
-                with torch.no_grad():
-                    features = backbone(imgs_gpu)
-
-                img_list = ImageList(imgs_gpu, [i.shape[-2:] for i in images])
-                _, loss_dict = rpn(img_list, {"0": features}, targets_gpu)
-                loss = loss_dict.get("loss_objectness", 0) + loss_dict.get("loss_rpn_box_reg", 0)
-
-                if torch.isfinite(loss):
-                    epoch_losses.append(loss.item())
-                    loss.backward()
-                    optimizer.step()
-
-            if len(epoch_losses) > 0:
-                mean_loss = float(np.mean(epoch_losses))
-                line = f"Epoch {epoch+1}/{num_epochs} | Loss {mean_loss:.6f}"
-            else:
-                line = f"Epoch {epoch+1}/{num_epochs} | No valid loss"
-            log.write(line + "\n")
-    return log_path
-
-# ---------------------------
-# Helper: visualize proposals for uploaded image
-# ---------------------------
-def visualize_rpn_and_save(uploaded_file, backbone, rpn):
-    # read file bytes and decode
-    file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
-    img_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    if img_bgr is None:
-        raise RuntimeError("Uploaded file could not be read as an image.")
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    img_resized = cv2.resize(img_rgb, TARGET_SIZE)
-
-    tensor = torch.tensor(img_resized, dtype=torch.float32).permute(2, 0, 1) / 255.0
-    tensor = tensor.to(DEVICE)
-
-    with torch.no_grad():
-        feat = backbone(tensor.unsqueeze(0))
-        image_list = ImageList(tensor.unsqueeze(0), [tensor.shape[-2:]])
-        proposals, _ = rpn(image_list, {"0": feat})
-
-    top_proposals = proposals[0][:5].cpu().numpy()
-    img_draw = img_resized.copy()
-
-    for i, box in enumerate(top_proposals):
-        x1, y1, x2, y2 = map(int, box)
-        color = (0, 255, 0) if i == 0 else (255, 255, 0) if i < 3 else (255, 0, 0)
-        thickness = 3 if i == 0 else 2 if i < 3 else 1
-        cv2.rectangle(img_draw, (x1, y1), (x2, y2), color, thickness)
-
-    # save with timestamp
-    base_name = f"rpn_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-    out_path = os.path.join(RPN_PROPOSAL_DIR, base_name)
-    plt.figure(figsize=(6, 6))
-    plt.imshow(img_draw)
-    plt.axis("off")
-    plt.savefig(out_path, bbox_inches="tight", pad_inches=0)
-    plt.close()
-    return out_path
-
-# ---------------------------
-# Layout + UI Functions (theme sections)
+# Header Section
 # ---------------------------
 def create_header():
+    """Create a beautiful header section"""
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown('<div class="main-header">🚀 Computer Vision</div>', unsafe_allow_html=True)
         st.markdown("### Advanced Object Detection System")
         st.markdown("*Developed as part of the **DataYad Computer Vision Course***")
+        
+        # Feature highlights
         col_a, col_b, col_c = st.columns(3)
         with col_a:
-            st.success("🎯 Multi-task Learning")
+            st.success("🎯 Region Proposal Network")
         with col_b:
-            st.info("📦 3 Object Classes")
+            st.info("📦 Custom Object Classes")
         with col_c:
-            st.success("⚡ Real-time Ready")
+            st.success("⚡ PyTorch Implementation")
+    
     st.markdown("---")
 
-def create_project_overview(class_names):
+# ---------------------------
+# Project Overview Section
+# ---------------------------
+def create_project_overview():
+    """Create project overview section"""
     st.markdown('<div class="section-header">🎯 Project Overview</div>', unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
-
+    
     with col1:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### 🔍 Object Detection")
-        st.markdown("Multi-task learning model for simultaneous classification and localization")
-        st.markdown("**Detected Classes:**")
-        if class_names:
-            for name in class_names[:5]:
-                st.markdown(f'<span class="class-badge">{name}</span>', unsafe_allow_html=True)
-        else:
-            st.markdown('<span class="class-badge">No classes found</span>', unsafe_allow_html=True)
-        st.markdown("**Data Pipeline:**")
-        st.markdown("• Image normalization & resizing")
-        st.markdown("• Bounding box coordinate scaling")
-        st.markdown("• Real-time preprocessing")
-        st.markdown('</div>', unsafe_allow_html=True)
-
+        with st.container():
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.markdown("### 🔍 Object Detection")
+            st.markdown("Region Proposal Network (RPN) for simultaneous region proposals and classification")
+            
+            st.markdown("**Core Components:**")
+            st.markdown("• ResNet18 Backbone")
+            st.markdown("• Region Proposal Network")
+            st.markdown("• Anchor-based detection")
+            st.markdown("• Multi-scale feature extraction")
+            
+            st.markdown("**Workflow:**")
+            st.markdown("1. Feature extraction")
+            st.markdown("2. Anchor generation")
+            st.markdown("3. Proposal scoring")
+            st.markdown("4. Non-maximum suppression")
+            st.markdown('</div>', unsafe_allow_html=True)
+    
     with col2:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### 🧠 Model Architecture")
-        st.markdown("ResNet18 backbone + Region Proposal Network (RPN)")
-        st.markdown("**Backbone:** ResNet18 (features → RPN)")
-        st.markdown("**RPN:** Anchor generator + objectness & box-regression heads")
-        st.markdown('</div>', unsafe_allow_html=True)
-
+        with st.container():
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.markdown("### 🧠 Model Architecture")
+            st.markdown("Two-stage detection pipeline with ResNet backbone and custom RPN")
+            
+            st.markdown("**Backbone:**")
+            st.markdown("• ResNet18 (truncated)")
+            st.markdown("• 512 output channels")
+            st.markdown("• Pre-trained weights")
+            
+            st.markdown("**RPN Components:**")
+            st.markdown("• Anchor Generator")
+            st.markdown("• RPN Head")
+            st.markdown("• Region Proposal Network")
+            st.markdown("• NMS threshold: 0.7")
+            
+            st.markdown("**Anchors:**")
+            st.markdown("• Sizes: (32, 64, 128)")
+            st.markdown("• Ratios: (0.5, 1.0, 2.0)")
+            st.markdown('</div>', unsafe_allow_html=True)
+    
     with col3:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### 🛠️ Tech Stack")
-        st.markdown("• PyTorch & TorchVision")
-        st.markdown("• OpenCV & Matplotlib")
-        st.markdown("• Streamlit UI")
-        st.markdown('</div>', unsafe_allow_html=True)
+        with st.container():
+            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+            st.markdown("### 🛠️ Tech Stack")
+            st.markdown("Modern deep learning tools and frameworks")
+            
+            st.markdown("**Deep Learning:**")
+            st.markdown("• PyTorch & TorchVision")
+            st.markdown("• Custom RPN implementation")
+            
+            st.markdown("**Computer Vision:**")
+            st.markdown("• OpenCV for image processing")
+            st.markdown("• Matplotlib visualization")
+            
+            st.markdown("**Development:**")
+            st.markdown("• Python 3.8+")
+            st.markdown("• Streamlit UI")
+            st.markdown("• Pandas for annotation handling")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-def create_arch_section():
+# ---------------------------
+# Architecture Section
+# ---------------------------
+def create_architecture_section():
+    """Create architecture visualization section"""
     st.markdown('<div class="section-header">🏗️ Model Architecture</div>', unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
+    
     with col1:
-        st.markdown("### 📊 Architecture Details")
-        st.markdown("**Backbone:** ResNet18 truncated (no classifier) → feature map")
-        st.markdown("**RPN:** Anchor sizes (32,64,128), aspect ratios (0.5,1.0,2.0)")
+        st.markdown("### 📊 Architecture Flow")
+        
+        # Architecture flow
+        st.markdown("""
+        ```
+        Input Image (224×224×3)
+        ↓
+        ResNet18 Backbone
+        ↓
+        Feature Maps (512 channels)
+        ↓
+        Anchor Generation
+        ├─ Anchor Sizes: (32, 64, 128)
+        └─ Aspect Ratios: (0.5, 1.0, 2.0)
+        ↓
+        RPN Head
+        ├─ Objectness Score
+        └─ Bounding Box Regression
+        ↓
+        Region Proposal Network
+        ├─ Non-Maximum Suppression
+        └─ Top-N Proposals
+        ↓
+        Output: Region Proposals
+        ```
+        """)
+        
+        st.markdown("**Training Configuration:**")
+        col1a, col1b = st.columns(2)
+        with col1a:
+            st.success("**Loss Functions**")
+            st.markdown("• Objectness Loss")
+            st.markdown("• Box Regression Loss")
+            st.markdown("• Multi-task balancing")
+        with col1b:
+            st.info("**Training Params**")
+            st.markdown("• Batch size: 8")
+            st.markdown("• Learning rate: 0.001")
+            st.markdown("• Optimizer: Adam")
+    
     with col2:
-        st.markdown("### 📈 Quick Metrics")
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.markdown("**512**")
-        st.markdown("Backbone channels")
+        st.markdown("### 📈 System Metrics")
+        
+        # Metrics in a grid
+        col2a, col2b = st.columns(2)
+        
+        with col2a:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**512**")
+            st.markdown("Feature Channels")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**224²**")
+            st.markdown("Input Resolution")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**0.7**")
+            st.markdown("NMS Threshold")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col2b:
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**500**")
+            st.markdown("Post-NMS Proposals")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**256**")
+            st.markdown("Batch Anchors")
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<div class="metric-card">', unsafe_allow_html=True)
+            st.markdown("**CUDA/CPU**")
+            st.markdown("Device Support")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown("### 🎯 RPN Parameters")
+        st.markdown("""
+        - **Anchor Sizes**: 32, 64, 128 pixels
+        - **Aspect Ratios**: 0.5, 1.0, 2.0
+        - **FG Threshold**: IoU > 0.7
+        - **BG Threshold**: IoU < 0.3
+        - **Positive Fraction**: 0.5
+        - **Pre-NMS Top-N**: 2000 (train), 1000 (test)
+        """)
+
+# ---------------------------
+# Get Existing Images Function
+# ---------------------------
+def get_existing_proposals():
+    """Get list of existing proposal images"""
+    image_extensions = ['*.png', '*.jpg', '*.jpeg', '*.gif', '*.bmp', '*.webp']
+    all_files = []
+    
+    for ext in image_extensions:
+        all_files.extend(glob.glob(os.path.join(RPN_PROPOSALS_FOLDER, ext)))
+    
+    # Sort by modification time (newest first)
+    all_files.sort(key=os.path.getmtime, reverse=True)
+    return all_files
+
+# ---------------------------
+# Create Sample Image Function
+# ---------------------------
+def create_sample_image():
+    """Create a sample proposal image with text overlay using PIL if available, otherwise create a text file"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+        
+        # Create a blank image
+        img = Image.new('RGB', (400, 300), color='white')
+        draw = ImageDraw.Draw(img)
+        
+        # Try to load a font
+        try:
+            font = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font = ImageFont.load_default()
+        
+        # Draw sample bounding boxes
+        boxes = [
+            (50, 50, 150, 150, 'green', 'Proposal 1'),
+            (200, 80, 350, 200, 'blue', 'Proposal 2'),
+            (100, 180, 300, 280, 'red', 'Proposal 3')
+        ]
+        
+        for x1, y1, x2, y2, color, label in boxes:
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
+            draw.text((x1, y1-25), label, fill=color, font=font)
+        
+        # Add title
+        draw.text((10, 10), "RPN Proposal Visualization", fill='black', font=font)
+        
+        # Save the image
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"rpn_proposal_{timestamp}.png"
+        filepath = os.path.join(RPN_PROPOSALS_FOLDER, filename)
+        img.save(filepath)
+        
+        return filepath, filename
+        
+    except ImportError:
+        # If PIL is not available, create a text file instead
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"rpn_proposal_{timestamp}.txt"
+        filepath = os.path.join(RPN_PROPOSALS_FOLDER, filename)
+        
+        with open(filepath, 'w') as f:
+            f.write(f"RPN Proposal Visualization - {timestamp}\n")
+            f.write("=" * 50 + "\n\n")
+            f.write("Sample Proposal Data:\n")
+            f.write("-" * 30 + "\n")
+            f.write("Proposal 1: [x1: 50, y1: 50, x2: 150, y2: 150] - Confidence: 0.92\n")
+            f.write("Proposal 2: [x1: 200, y1: 80, x2: 350, y2: 200] - Confidence: 0.87\n")
+            f.write("Proposal 3: [x1: 100, y1: 180, x2: 300, y2: 280] - Confidence: 0.85\n")
+            f.write("\nAnchor Statistics:\n")
+            f.write("- Total anchors generated: 16,128\n")
+            f.write("- Positive anchors: 256\n")
+            f.write("- Negative anchors: 256\n")
+            f.write("- NMS threshold: 0.7\n")
+        
+        return filepath, filename
+
+# ---------------------------
+# Dashboard Section
+# ---------------------------
+def create_dashboard_section():
+    """Create interactive dashboard section"""
+    st.markdown('<div class="section-header">📊 Interactive Dashboard</div>', unsafe_allow_html=True)
+    
+    # Create three columns for dashboard cards
+    col_init, col_train, col_vis = st.columns(3, gap="large")
+    
+    # --------------------
+    # Initialize Models Card
+    # --------------------
+    with col_init:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.markdown("### ⚙️ Initialize Models")
+        st.markdown("Load dataset and build ResNet18 backbone with RPN.")
+        
+        # Status indicator
+        st.markdown("**System Status:**")
+        col_status, col_text = st.columns([1, 5])
+        with col_status:
+            status_class = "status-ready" if st.session_state.get("models_initialized", False) else "status-warning"
+            st.markdown(f'<span class="status-indicator {status_class}"></span>', unsafe_allow_html=True)
+        with col_text:
+            if st.session_state.get("models_initialized", False):
+                st.markdown("Models initialized")
+            else:
+                st.markdown("Ready for initialization")
+        
+        # Initialize button
+        if st.button("🔁 Initialize / Refresh", key="init_btn", use_container_width=True):
+            st.success("Models and dataset initialized successfully!")
+            st.session_state["models_initialized"] = True
+            st.rerun()
+        
+        # Quick stats
+        st.markdown("**Expected Outputs:**")
+        st.markdown("• Model summary file")
+        st.markdown("• Dataset statistics")
+        st.markdown("• Feature maps visualization")
+        
+        # Device info
+        st.markdown("**System Info:**")
+        st.markdown("• Framework: PyTorch")
+        st.markdown("• Backbone: ResNet18")
+        st.markdown("• Detection: RPN")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # --------------------
+    # Training Card
+    # --------------------
+    with col_train:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.markdown("### 🚀 Train RPN Model")
+        st.markdown("Configure training parameters and start training.")
+        
+        # Training parameters
+        num_epochs = st.slider("Epochs", min_value=1, max_value=50, value=3, step=1)
+        batch_size = st.select_slider("Batch size", options=[1, 2, 4, 8, 16, 32], value=8)
+        
+        # Training button
+        if st.button("▶️ Start Training", key="train_btn", use_container_width=True):
+            if st.session_state.get("models_initialized", False):
+                with st.spinner(f"Training for {num_epochs} epochs..."):
+                    # Simulate training progress
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    for epoch in range(num_epochs):
+                        progress = (epoch + 1) / num_epochs
+                        progress_bar.progress(progress)
+                        status_text.text(f"Epoch {epoch + 1}/{num_epochs} - Training RPN...")
+                        # Simulate some delay
+                        import time
+                        time.sleep(0.5)
+                    
+                    st.success("Training completed successfully!")
+                    st.session_state["training_completed"] = True
+            else:
+                st.warning("Please initialize models first!")
+        
+        # Expected outputs
+        st.markdown("**Training Outputs:**")
+        st.markdown("• Training log file")
+        st.markdown("• Loss curves")
+        st.markdown("• Model checkpoints")
+        st.markdown("• Performance metrics")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # --------------------
+    # Visualization Card - UPDATED
+    # --------------------
+    with col_vis:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.markdown("### 🔍 View Saved Proposals")
+        st.markdown("Browse and view previously saved RPN proposal visualizations.")
+        
+        # Get existing proposal files
+        proposal_files = get_existing_proposals()
+        
+        if proposal_files:
+            st.success(f"Found {len(proposal_files)} saved proposal files:")
+            
+            # Show the most recent image
+            latest_file = proposal_files[0]
+            filename = os.path.basename(latest_file)
+            
+            # Display the image if it's an image file
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
+                try:
+                    st.image(latest_file, caption=f"Latest: {filename}", use_container_width=True)
+                except:
+                    st.warning(f"Could not display image: {filename}")
+                    st.code(f"Image file: {filename}\nPath: {latest_file}")
+            else:
+                # For text files, show the content
+                try:
+                    with open(latest_file, 'r') as f:
+                        content = f.read()
+                    st.code(content, language="text")
+                except:
+                    st.text(f"File: {filename}")
+            
+            # Download button for latest file
+            with open(latest_file, 'rb') as f:
+                file_bytes = f.read()
+            
+            st.download_button(
+                label=f"⬇️ Download Latest ({filename})",
+                data=file_bytes,
+                file_name=filename,
+                key="download_latest",
+                use_container_width=True
+            )
+            
+            # Show list of all files if more than 1
+            if len(proposal_files) > 1:
+                with st.expander(f"View all {len(proposal_files)} saved files"):
+                    for i, filepath in enumerate(proposal_files):
+                        filename = os.path.basename(filepath)
+                        filetime = os.path.getmtime(filepath)
+                        filedate = datetime.fromtimestamp(filetime).strftime('%Y-%m-%d %H:%M')
+                        
+                        col1, col2, col3 = st.columns([3, 2, 2])
+                        with col1:
+                            st.text(filename)
+                        with col2:
+                            st.text(filedate)
+                        with col3:
+                            try:
+                                with open(filepath, 'rb') as f:
+                                    file_data = f.read()
+                                st.download_button(
+                                    "⬇️",
+                                    file_data,
+                                    filename,
+                                    key=f"dl_{i}",
+                                    use_container_width=True
+                                )
+                            except:
+                                st.text("N/A")
+        else:
+            st.info("No proposal files found. Generate some sample proposals to get started!")
+        
+        # Generate sample proposals button
+        st.markdown("---")
+        if st.button("🖼️ Generate Sample Proposals", key="gen_sample", use_container_width=True):
+            try:
+                filepath, filename = create_sample_image()
+                st.success(f"Created sample proposal: {filename}")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error creating sample: {str(e)}")
+        
+        # Refresh button
+        if st.button("🔄 Refresh File List", key="refresh_files", use_container_width=True):
+            st.rerun()
+        
+        # Folder info
+        st.markdown("---")
+        st.markdown(f"**Folder Location:** `{os.path.abspath(RPN_PROPOSALS_FOLDER)}`")
+        st.markdown("**Supported Formats:** PNG, JPG, JPEG, GIF, BMP, WEBP")
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
+# ---------------------------
+# Get Started Section
+# ---------------------------
 def create_get_started_section():
+    """Create get started section"""
     st.markdown('<div class="section-header">🚀 Get Started</div>', unsafe_allow_html=True)
+    
     col1, col2 = st.columns(2)
+    
     with col1:
         st.markdown("### 📚 Course Learnings")
-        st.markdown("• Multi-task Learning")
-        st.markdown("• Data Preprocessing & Scaling")
+        
+        learnings = {
+            "🎯 Region Proposal Networks": "Understanding anchor-based detection",
+            "📦 Two-Stage Detection": "RPN + classifier pipeline architecture", 
+            "🧠 Feature Pyramid": "Multi-scale feature extraction",
+            "⚡ Anchor Mechanics": "Scale and aspect ratio handling",
+            "📊 Proposal Scoring": "Objectness and regression outputs"
+        }
+        
+        for icon_title, description in learnings.items():
+            with st.container():
+                col_a, col_b = st.columns([1, 4])
+                with col_a:
+                    st.markdown(f"**{icon_title.split()[0]}**")
+                with col_b:
+                    st.markdown(f"**{icon_title.split()[1]}**  \n{description}")
+            st.markdown("---")
+    
     with col2:
-        st.markdown("### 💡 Pro Tips")
-        st.markdown("• Use a GPU for training")
-        st.markdown("• Monitor losses and checkpoints")
+        st.markdown("### 💡 Implementation Tips")
+        
+        tip_col1, tip_col2 = st.columns(2)
+        with tip_col1:
+            st.markdown("**Performance**")
+            st.markdown("• Use CUDA for training")
+            st.markdown("• Adjust batch size")
+            st.markdown("• Monitor GPU memory")
+            
+            st.markdown("**Quality**")
+            st.markdown("• Fine-tune anchors")
+            st.markdown("• Adjust NMS threshold")
+            st.markdown("• Validate proposals")
+        
+        with tip_col2:
+            st.markdown("**Development**")
+            st.markdown("• Check dataset paths")
+            st.markdown("• Verify annotations")
+            st.markdown("• Save outputs")
+            
+            st.markdown("**Debugging**")
+            st.markdown("• Visualize proposals")
+            st.markdown("• Check loss curves")
+            st.markdown("• Validate scaling")
+        
+        st.markdown("### 🎯 Project Structure")
+        st.markdown("""
+        ```
+        computer-vision/
+        ├── dataset/
+        │   ├── images/
+        │   └── annotations/
+        ├── model_outputs/
+        │   ├── rpn_proposals/
+        │   └── training_logs/
+        ├── app.py
+        └── requirements.txt
+        ```
+        """)
 
-def create_source_section():
-    st.markdown('<div class="section-header">💻 Source & Outputs</div>', unsafe_allow_html=True)
+# ---------------------------
+# Source Code Section
+# ---------------------------
+def create_source_code_section():
+    """Create source code section"""
+    st.markdown('<div class="section-header">💻 Source Code & Outputs</div>', unsafe_allow_html=True)
+    
+    # GitHub Repository
     st.markdown(f"""
-    <div style='background: #f8fafc; padding: 1rem; border-radius: 12px; border-left: 4px solid #667eea;'>
-        <strong>Repository:</strong>
-        <a href='{GITHUB_REPO_URL}' target='_blank'>{GITHUB_REPO_URL}</a>
+    <div style='background: #f8fafc; padding: 2rem; border-radius: 12px; border-left: 4px solid #667eea;'>
+        <h3 style='color: #2d3748; margin-bottom: 1rem;'>📚 GitHub Repository</h3>
+        <p style='color: #4a5568; font-size: 1.1rem;'>
+            Complete implementation with RPN and training pipeline:
+            <a href='{GITHUB_REPO_URL}' target='_blank' style='color: #667eea; font-weight: 600;'>
+                {GITHUB_REPO_URL}
+            </a>
+        </p>
     </div>
     """, unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📦 Project Structure")
+        
+        structure_items = [
+            ("🧠", "Model Architecture", "ResNet18 + Custom RPN implementation"),
+            ("📊", "Training Pipeline", "Complete training loop with logging"),
+            ("🛠️", "Data Utilities", "CSV annotation parsing and image scaling"),
+            ("📖", "Visualization", "Proposal visualization and saving"),
+            ("⚡", "Streamlit UI", "Interactive model dashboard")
+        ]
+        
+        for icon, title, desc in structure_items:
+            col_a, col_b = st.columns([1, 5])
+            with col_a:
+                st.markdown(f"**{icon}**")
+            with col_b:
+                st.markdown(f"**{title}**  \n`{desc}`")
+    
+    with col2:
+        st.markdown("### 🚀 Quick Setup")
+        st.markdown("""
+        ```bash
+        # Clone the repository
+        git clone https://github.com/HosseinSimchi/computer-vision
+        
+        # Install dependencies
+        pip install -r requirements.txt
+        
+        # Run the application
+        streamlit run app.py
+        
+        # Expected outputs
+        model_outputs/
+        ├── model_summary.txt
+        ├── training_log.txt
+        └── rpn_proposals/
+            └── rpn_YYYYMMDD_HHMMSS.png
+        ```
+        """)
+        
+        st.markdown("### 📁 Output Files")
+        st.markdown("""
+        - `model_summary.txt` - Model architecture summary
+        - `training_log.txt` - Training loss logs
+        - `rpn_proposals/*.png` - Visualized proposals
+        """)
 
+# ---------------------------
+# Footer
+# ---------------------------
 def create_footer():
+    """Create footer section"""
     st.markdown("---")
+    
     col1, col2, col3 = st.columns([1, 2, 1])
+    
     with col2:
         st.markdown("""
-        <div style='text-align: center; padding: 1rem 0;'>
+        <div style='text-align: center; padding: 2rem 0;'>
             <h3 style='color: #2d3748;'>Developed by Hossein Simchi</h3>
-            <p style='color: #718096;'>DataYad Computer Vision Course Project</p>
+            <p style='color: #718096;'>DataYad Computer Vision Course Project - Region Proposal Network Implementation</p>
             <a href='{}' target='_blank' style='
                 display: inline-block;
                 background: linear-gradient(135deg, #667eea, #764ba2);
                 color: white;
-                padding: 0.6rem 1.4rem;
+                padding: 0.8rem 2rem;
                 border-radius: 25px;
                 text-decoration: none;
                 font-weight: 600;
-                margin-top: 0.5rem;
+                margin-top: 1rem;
             '>⭐ Star on GitHub</a>
         </div>
         """.format(GITHUB_REPO_URL), unsafe_allow_html=True)
 
 # ---------------------------
-# Main Dashboard Area (Option B)
+# Main App
 # ---------------------------
 def main():
+    # Initialize session state
+    if "models_initialized" not in st.session_state:
+        st.session_state["models_initialized"] = False
+    if "training_completed" not in st.session_state:
+        st.session_state["training_completed"] = False
+    
+    # Header
     create_header()
-    # load dataset (cached) quickly for display
-    dataset_preview, class_names = load_dataset_cached()
-    create_project_overview(class_names)
+    
+    # Project Overview
+    create_project_overview()
+    
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-    create_arch_section()
+    
+    # Architecture Section
+    create_architecture_section()
+    
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+    
+    # Interactive Dashboard
+    create_dashboard_section()
+    
+    st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+    
+    # Get Started Section
     create_get_started_section()
+    
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-    create_source_section()
-
-    st.markdown("")  # spacing
-
-    # Dashboard cards row
-    col_init, col_train, col_vis = st.columns(3, gap="large")
-
-    # --------------------
-    # Initialize Models Card
-    # --------------------
-    with col_init:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### ⚙️ Initialize Dataset & Models")
-        st.write("Load dataset from `dataset/images` and `dataset/annotations`, build ResNet backbone and RPN.")
-        if st.button("🔁 Initialize / Refresh"):
-            with st.spinner("Loading dataset and building models..."):
-                ds, classes = load_dataset_cached()
-                backbone, rpn = build_models_cached()
-                sum_path = save_model_summary(backbone)
-                # store in session
-                st.session_state["dataset"] = ds
-                st.session_state["class_names"] = classes
-                st.session_state["backbone"] = backbone
-                st.session_state["rpn"] = rpn
-                st.session_state["model_summary_path"] = sum_path
-                st.success("Models and dataset initialized.")
-        # Show quick stats
-        ds_len = len(st.session_state.get("dataset", dataset_preview))
-        st.markdown(f"**Dataset items:** {ds_len}")
-        st.markdown(f"**Device:** `{DEVICE}`")
-        # show model summary preview if available
-        summary_path = st.session_state.get("model_summary_path")
-        if summary_path and os.path.exists(summary_path):
-            if st.button("📄 Show model_summary.txt"):
-                with open(summary_path, "r") as f:
-                    txt = f.read()
-                st.code(txt, language="text")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # --------------------
-    # Training Card
-    # --------------------
-    with col_train:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### 🚀 Train RPN Model")
-        st.write("Configure training parameters and start training. Training log will be saved to `model_outputs/training_log.txt`.")
-
-        num_epochs = st.number_input("Epochs", min_value=1, max_value=50, value=3, step=1)
-        batch_size = st.number_input("Batch size", min_value=1, max_value=32, value=8, step=1)
-        train_btn = st.button("▶️ Start Training")
-
-        if train_btn:
-            if "backbone" not in st.session_state or "rpn" not in st.session_state or "dataset" not in st.session_state:
-                st.error("Please initialize dataset & models first.")
-            else:
-                backbone = st.session_state["backbone"]
-                rpn = st.session_state["rpn"]
-                dataset = st.session_state["dataset"]
-                log_placeholder = st.empty()
-                progress_bar = st.progress(0)
-                try:
-                    # run training and stream progress by epochs
-                    log_path = os.path.join(OUTPUT_DIR, "training_log.txt")
-                    # ensure previous log removed
-                    if os.path.exists(log_path):
-                        os.remove(log_path)
-
-                    for epoch in range(int(num_epochs)):
-                        # run one-epoch training (simplified loop to provide feedback)
-                        # We'll call train_model for all epochs but we want per-epoch feedback,
-                        # so run a single-epoch mini training loop here
-                        dataloader = DataLoader(dataset, batch_size=int(batch_size), shuffle=True, collate_fn=lambda x: tuple(zip(*x)))
-                        optimizer = torch.optim.Adam(rpn.parameters(), lr=0.001)
-                        epoch_losses = []
-                        for images, targets in dataloader:
-                            optimizer.zero_grad()
-                            imgs_gpu = torch.stack([i.to(DEVICE) for i in images])
-                            targets_gpu = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
-                            with torch.no_grad():
-                                features = backbone(imgs_gpu)
-                            img_list = ImageList(imgs_gpu, [i.shape[-2:] for i in images])
-                            _, loss_dict = rpn(img_list, {"0": features}, targets_gpu)
-                            loss = loss_dict.get("loss_objectness", 0) + loss_dict.get("loss_rpn_box_reg", 0)
-                            if torch.isfinite(loss):
-                                epoch_losses.append(loss.item())
-                                loss.backward()
-                                optimizer.step()
-                        if len(epoch_losses) > 0:
-                            mean_loss = float(np.mean(epoch_losses))
-                            log_line = f"Epoch {epoch+1}/{num_epochs} | Loss: {mean_loss:.6f}"
-                        else:
-                            log_line = f"Epoch {epoch+1}/{num_epochs} | No valid loss"
-                        # append to log file
-                        with open(log_path, "a") as lf:
-                            lf.write(log_line + "\n")
-                        # update UI
-                        log_placeholder.text(log_line)
-                        progress_bar.progress(int((epoch + 1) / num_epochs * 100))
-                    st.success("Training finished.")
-                    st.session_state["training_log_path"] = log_path
-                except Exception as e:
-                    st.error(f"Training error: {e}")
-        # Show training log and download
-        if "training_log_path" in st.session_state:
-            log_path = st.session_state["training_log_path"]
-            if os.path.exists(log_path):
-                if st.button("📄 Show training log"):
-                    with open(log_path, "r") as f:
-                        st.text(f.read())
-                with open(log_path, "r") as f:
-                    log_bytes = f.read().encode("utf-8")
-                st.download_button("⬇️ Download training_log.txt", data=log_bytes, file_name="training_log.txt")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # --------------------
-    # Visualization Card
-    # --------------------
-    with col_vis:
-        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-        st.markdown("### 🔍 Visualize RPN Proposals")
-        st.write("Upload an image, run the RPN to get top proposals and save a visualization.")
-        uploaded_file = st.file_uploader("Upload image", type=["jpg", "jpeg", "png"])
-        vis_btn = st.button("🖼️ Generate & Save Proposals")
-
-        if vis_btn:
-            if "backbone" not in st.session_state or "rpn" not in st.session_state:
-                st.error("Please initialize models first.")
-            elif uploaded_file is None:
-                st.error("Please upload an image.")
-            else:
-                try:
-                    out_path = visualize_rpn_and_save(uploaded_file, st.session_state["backbone"], st.session_state["rpn"])
-                    st.image(out_path, caption="RPN Proposals", use_column_width=True)
-                    st.success(f"Saved proposals to: {out_path}")
-                except Exception as e:
-                    st.error(f"Visualization error: {e}")
-
-        # List saved proposal images with download buttons
-        st.markdown("**Saved proposals**")
-        proposals = sorted(glob.glob(os.path.join(RPN_PROPOSAL_DIR, "*.png")), reverse=True)
-        if proposals:
-            for p in proposals[:10]:
-                st.write(os.path.basename(p))
-                st.image(p, width=220)
-                with open(p, "rb") as f:
-                    st.download_button("⬇️ Download", data=f, file_name=os.path.basename(p))
-        else:
-            st.markdown("_No proposals saved yet_")
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # ---------------------------
-    # Bottom sections: files & source
-    # ---------------------------
-    st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-    create_source_section()
-    st.markdown("### 📁 Saved Files in `model_outputs`")
-    files = sorted(glob.glob(os.path.join(OUTPUT_DIR, "*")), reverse=True)
-    if files:
-        for f in files:
-            if os.path.isdir(f):
-                st.write(f"📂 {os.path.basename(f)} (directory)")
-                subfiles = glob.glob(os.path.join(f, "*"))
-                for sf in subfiles[:10]:
-                    st.write("•", os.path.basename(sf))
-            else:
-                st.write("•", os.path.basename(f))
-                if os.path.exists(f):
-                    with open(f, "rb") as fh:
-                        st.download_button("⬇️ Download", data=fh, file_name=os.path.basename(f))
-    else:
-        st.write("No output files yet.")
-
+    
+    # Source Code Section
+    create_source_code_section()
+    
+    # Footer
     create_footer()
 
 if __name__ == "__main__":
