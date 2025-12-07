@@ -3,6 +3,8 @@ import streamlit as st
 import os
 import glob
 from datetime import datetime
+import base64
+from io import BytesIO
 
 # ---------------------------
 # Page config
@@ -18,8 +20,10 @@ st.set_page_config(
 # Configuration
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
-OUTPUT_FOLDER = "../model_outputs"
-RPN_PROPOSALS_FOLDER = os.path.join(OUTPUT_FOLDER, "rpn_proposals")
+
+# For Streamlit Cloud compatibility
+OUTPUT_FOLDER = "./model_outputs"
+RPN_PROPOSALS_FOLDER = "./model_outputs/rpn_proposals"
 
 # Create folders if they don't exist
 os.makedirs(RPN_PROPOSALS_FOLDER, exist_ok=True)
@@ -138,23 +142,19 @@ st.markdown("""
         background-color: #f56565;
     }
     
-    /* File list styling */
-    .file-item {
-        padding: 0.5rem;
-        border-bottom: 1px solid #e2e8f0;
-        transition: background-color 0.2s;
-    }
-    
-    .file-item:hover {
-        background-color: #f7fafc;
-    }
-    
     /* Image grid */
     .image-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 1rem;
         margin: 1rem 0;
+    }
+    
+    .sample-image {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f8fafc;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -365,67 +365,108 @@ def get_existing_proposals():
     return all_files
 
 # ---------------------------
-# Create Sample Image Function
+# Create Sample Image Function (NO PIL REQUIRED)
 # ---------------------------
 def create_sample_image():
-    """Create a sample proposal image with text overlay using PIL if available, otherwise create a text file"""
-    try:
-        from PIL import Image, ImageDraw, ImageFont
-        import numpy as np
-        
-        # Create a blank image
-        img = Image.new('RGB', (400, 300), color='white')
-        draw = ImageDraw.Draw(img)
-        
-        # Try to load a font
-        try:
-            font = ImageFont.truetype("arial.ttf", 20)
-        except:
-            font = ImageFont.load_default()
-        
-        # Draw sample bounding boxes
-        boxes = [
-            (50, 50, 150, 150, 'green', 'Proposal 1'),
-            (200, 80, 350, 200, 'blue', 'Proposal 2'),
-            (100, 180, 300, 280, 'red', 'Proposal 3')
-        ]
-        
-        for x1, y1, x2, y2, color, label in boxes:
-            draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
-            draw.text((x1, y1-25), label, fill=color, font=font)
-        
-        # Add title
-        draw.text((10, 10), "RPN Proposal Visualization", fill='black', font=font)
-        
-        # Save the image
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"rpn_proposal_{timestamp}.png"
-        filepath = os.path.join(RPN_PROPOSALS_FOLDER, filename)
-        img.save(filepath)
-        
-        return filepath, filename
-        
-    except ImportError:
-        # If PIL is not available, create a text file instead
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"rpn_proposal_{timestamp}.txt"
-        filepath = os.path.join(RPN_PROPOSALS_FOLDER, filename)
-        
-        with open(filepath, 'w') as f:
-            f.write(f"RPN Proposal Visualization - {timestamp}\n")
-            f.write("=" * 50 + "\n\n")
-            f.write("Sample Proposal Data:\n")
-            f.write("-" * 30 + "\n")
-            f.write("Proposal 1: [x1: 50, y1: 50, x2: 150, y2: 150] - Confidence: 0.92\n")
-            f.write("Proposal 2: [x1: 200, y1: 80, x2: 350, y2: 200] - Confidence: 0.87\n")
-            f.write("Proposal 3: [x1: 100, y1: 180, x2: 300, y2: 280] - Confidence: 0.85\n")
-            f.write("\nAnchor Statistics:\n")
-            f.write("- Total anchors generated: 16,128\n")
-            f.write("- Positive anchors: 256\n")
-            f.write("- Negative anchors: 256\n")
-            f.write("- NMS threshold: 0.7\n")
-        
-        return filepath, filename
+    """Create a sample proposal image using base64 encoded image or text file"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Method 1: Create a text file with base64 encoded sample image
+    filename = f"rpn_proposal_{timestamp}.txt"
+    filepath = os.path.join(RPN_PROPOSALS_FOLDER, filename)
+    
+    # Create a sample proposal data file
+    content = f"""RPN PROPOSAL VISUALIZATION - {timestamp}
+===========================================
+
+TOP 5 REGION PROPOSALS:
+1. Bounding Box: [x1: 45, y1: 32, x2: 128, y2: 145] 
+   Confidence: 0.92
+   Class: Airplane
+   
+2. Bounding Box: [x1: 89, y1: 67, x2: 156, y2: 189]
+   Confidence: 0.87
+   Class: Face
+   
+3. Bounding Box: [x1: 34, y1: 123, x2: 167, y2: 234]
+   Confidence: 0.85
+   Class: Motorcycle
+   
+4. Bounding Box: [x1: 156, y1: 45, x2: 209, y2: 167]
+   Confidence: 0.78
+   Class: Airplane
+   
+5. Bounding Box: [x1: 23, y1: 189, x2: 145, y2: 223]
+   Confidence: 0.72
+   Class: Face
+
+ANCHOR STATISTICS:
+- Total anchors generated: 16,128
+- Positive anchors (IoU > 0.7): 256
+- Negative anchors (IoU < 0.3): 256
+- NMS threshold: 0.7
+- Post-NMS proposals kept: 500
+
+MODEL INFO:
+- Backbone: ResNet18
+- Input size: 224x224
+- Feature channels: 512
+- Anchor sizes: [32, 64, 128]
+- Aspect ratios: [0.5, 1.0, 2.0]
+
+FILE GENERATED: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+"""
+    
+    with open(filepath, 'w') as f:
+        f.write(content)
+    
+    return filepath, filename
+
+# ---------------------------
+# Create Sample Image Display (NO PIL REQUIRED)
+# ---------------------------
+def create_sample_image_display():
+    """Create an ASCII art representation of RPN proposals"""
+    ascii_art = """
+    ┌─────────────────────────────────────────┐
+    │      RPN PROPOSAL VISUALIZATION         │
+    │                                         │
+    │    ┌─────────────┐                      │
+    │    │  Proposal 1 │                      │
+    │    │   Conf: 0.92│                      │
+    │    └─────────────┘                      │
+    │                                         │
+    │                      ┌─────────────┐    │
+    │                      │  Proposal 2 │    │
+    │                      │   Conf: 0.87│    │
+    │                      └─────────────┘    │
+    │                                         │
+    │         ┌─────────────────────┐         │
+    │         │     Proposal 3      │         │
+    │         │      Conf: 0.85     │         │
+    │         └─────────────────────┘         │
+    │                                         │
+    └─────────────────────────────────────────┘
+    
+    Legend:
+    ████ - High confidence proposal (> 0.8)
+    ▓▓▓▓ - Medium confidence proposal (0.6-0.8)
+    ░░░░ - Low confidence proposal (< 0.6)
+    
+    Anchor Grid (3x3):
+    ┌─────┬─────┬─────┐
+    │ 32x │ 32x │ 32x │
+    │ 0.5 │ 1.0 │ 2.0 │
+    ├─────┼─────┼─────┤
+    │ 64x │ 64x │ 64x │
+    │ 0.5 │ 1.0 │ 2.0 │
+    ├─────┼─────┼─────┤
+    │128x │128x │128x │
+    │ 0.5 │ 1.0 │ 2.0 │
+    └─────┴─────┴─────┘
+    """
+    
+    return ascii_art
 
 # ---------------------------
 # Dashboard Section
@@ -518,7 +559,7 @@ def create_dashboard_section():
         st.markdown('</div>', unsafe_allow_html=True)
     
     # --------------------
-    # Visualization Card - UPDATED
+    # Visualization Card - STREAMLIT CLOUD COMPATIBLE
     # --------------------
     with col_vis:
         st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
@@ -531,45 +572,52 @@ def create_dashboard_section():
         if proposal_files:
             st.success(f"Found {len(proposal_files)} saved proposal files:")
             
-            # Show the most recent image
+            # Show the most recent file
             latest_file = proposal_files[0]
             filename = os.path.basename(latest_file)
             
-            # Display the image if it's an image file
+            # Display sample visualization for image files
             if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')):
-                try:
-                    st.image(latest_file, caption=f"Latest: {filename}", use_container_width=True)
-                except:
-                    st.warning(f"Could not display image: {filename}")
-                    st.code(f"Image file: {filename}\nPath: {latest_file}")
+                st.markdown("**Sample RPN Proposal Visualization:**")
+                st.markdown('<div class="sample-image">', unsafe_allow_html=True)
+                st.code(create_sample_image_display())
+                st.markdown('</div>', unsafe_allow_html=True)
+                st.info(f"Note: Image file detected: `{filename}`. In production, this would show the actual image.")
             else:
                 # For text files, show the content
                 try:
                     with open(latest_file, 'r') as f:
                         content = f.read()
+                    st.markdown("**Latest Proposal Data:**")
                     st.code(content, language="text")
-                except:
-                    st.text(f"File: {filename}")
+                except Exception as e:
+                    st.warning(f"Could not read file: {str(e)}")
             
             # Download button for latest file
-            with open(latest_file, 'rb') as f:
-                file_bytes = f.read()
-            
-            st.download_button(
-                label=f"⬇️ Download Latest ({filename})",
-                data=file_bytes,
-                file_name=filename,
-                key="download_latest",
-                use_container_width=True
-            )
+            try:
+                with open(latest_file, 'rb') as f:
+                    file_bytes = f.read()
+                
+                st.download_button(
+                    label=f"⬇️ Download Latest ({filename})",
+                    data=file_bytes,
+                    file_name=filename,
+                    key="download_latest",
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.error(f"Could not read file for download: {str(e)}")
             
             # Show list of all files if more than 1
             if len(proposal_files) > 1:
                 with st.expander(f"View all {len(proposal_files)} saved files"):
                     for i, filepath in enumerate(proposal_files):
                         filename = os.path.basename(filepath)
-                        filetime = os.path.getmtime(filepath)
-                        filedate = datetime.fromtimestamp(filetime).strftime('%Y-%m-%d %H:%M')
+                        try:
+                            filetime = os.path.getmtime(filepath)
+                            filedate = datetime.fromtimestamp(filetime).strftime('%Y-%m-%d %H:%M')
+                        except:
+                            filedate = "Unknown"
                         
                         col1, col2, col3 = st.columns([3, 2, 2])
                         with col1:
@@ -597,7 +645,15 @@ def create_dashboard_section():
         if st.button("🖼️ Generate Sample Proposals", key="gen_sample", use_container_width=True):
             try:
                 filepath, filename = create_sample_image()
-                st.success(f"Created sample proposal: {filename}")
+                st.success(f"Created sample proposal: `{filename}`")
+                
+                # Show the created file content
+                with open(filepath, 'r') as f:
+                    content = f.read()
+                
+                with st.expander("View generated proposal data"):
+                    st.code(content, language="text")
+                
                 st.rerun()
             except Exception as e:
                 st.error(f"Error creating sample: {str(e)}")
@@ -608,8 +664,13 @@ def create_dashboard_section():
         
         # Folder info
         st.markdown("---")
-        st.markdown(f"**Folder Location:** `{os.path.abspath(RPN_PROPOSALS_FOLDER)}`")
-        st.markdown("**Supported Formats:** PNG, JPG, JPEG, GIF, BMP, WEBP")
+        st.markdown(f"**Folder Location:** `{RPN_PROPOSALS_FOLDER}`")
+        st.markdown("""
+        **Note on Streamlit Cloud:**
+        - Files are saved in the app's temporary workspace
+        - Files persist during the app session
+        - For permanent storage, use external services
+        """)
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -671,7 +732,7 @@ def create_get_started_section():
         st.markdown("### 🎯 Project Structure")
         st.markdown("""
         ```
-        computer-vision/Region Proposal Network
+        computer-vision/
         ├── dataset/
         │   ├── images/
         │   └── annotations/
@@ -679,7 +740,7 @@ def create_get_started_section():
         │   ├── rpn_proposals/
         │   └── training_logs/
         ├── notebooks/
-            ├── app.py
+        │   └── app.py
         └── requirements.txt
         ```
         """)
@@ -735,14 +796,14 @@ def create_source_code_section():
         pip install -r requirements.txt
         
         # Run the application
-        streamlit run app.py
+        streamlit run notebooks/app.py
         
         # Expected outputs
         model_outputs/
         ├── model_summary.txt
         ├── training_log.txt
         └── rpn_proposals/
-            └── rpn_YYYYMMDD_HHMMSS.png
+            └── rpn_YYYYMMDD_HHMMSS.txt
         ```
         """)
         
@@ -750,7 +811,8 @@ def create_source_code_section():
         st.markdown("""
         - `model_summary.txt` - Model architecture summary
         - `training_log.txt` - Training loss logs
-        - `rpn_proposals/*.png` - Visualized proposals
+        - `rpn_proposals/*.txt` - Proposal data files
+        - `rpn_proposals/*.png` - Visualized proposals (local only)
         """)
 
 # ---------------------------
