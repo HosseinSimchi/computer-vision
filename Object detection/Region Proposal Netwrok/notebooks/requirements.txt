@@ -1,11 +1,5 @@
 streamlit
 matplotlib
-opencv-python
-tensorflow
+pandas
 numpy
-pillow
-scikit-image
-torch
-torchvision
-albumentations
-protobuf==3.20.3
+
