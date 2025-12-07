@@ -18,7 +18,7 @@ st.set_page_config(
 # Configuration
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
-OUTPUT_FOLDER = "./model_outputs"
+OUTPUT_FOLDER = "../model_outputs"
 RPN_PROPOSALS_FOLDER = os.path.join(OUTPUT_FOLDER, "rpn_proposals")
 
 # Create folders if they don't exist
