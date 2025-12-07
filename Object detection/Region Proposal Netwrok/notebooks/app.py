@@ -30,8 +30,8 @@ st.set_page_config(
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-IMAGE_DIR = "dataset/images"
-ANNOT_DIR = "dataset/annotations"
+IMAGE_DIR = "../dataset/images"
+ANNOT_DIR = "../dataset/annotations"
 TARGET_SIZE = (224, 224)
 OUTPUT_DIR = "model_outputs"
 RPN_PROPOSAL_DIR = os.path.join(OUTPUT_DIR, "rpn_proposals")
