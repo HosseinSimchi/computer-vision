@@ -1,0 +1,58 @@
+============================================================
+RPN MODEL ANALYSIS SUMMARY
+============================================================
+
+MODEL CONFIGURATION:
+----------------------------------------
+Backbone: ResNet18 (frozen)
+Output channels: 512
+Anchor sizes: (32, 64, 128)
+Aspect ratios: (0.5, 1.0, 2.0)
+Training epochs: 5
+Device: cpu
+
+OUTPUT DIRECTORY STATUS:
+----------------------------------------
+RPN Proposals (../model_outputs/rpn_proposals):
+  Files found: 3
+  Sample files: image_0416_rpn_proposals.png, image_0013_rpn_proposals.png, image_0002_rpn_proposals.png
+
+Visualizations (../model_outputs/visualizations):
+  Files found: 6
+  Sample files: image_0416_report.txt, image_0416_analysis.png, image_0013_analysis.png
+
+Feature Importance (../model_outputs/feature_importance): Directory not found
+
+Training Logs (../model_outputs):
+  Files found: 2
+  Sample files: analysis_summary.txt, training_log.txt
+
+ANALYSIS METHODS USED:
+----------------------------------------
+1. RPN Proposal Visualization
+   - Shows bounding box proposals on images
+   - Top 5 proposals highlighted with different colors
+
+2. Feature Map Visualization
+   - Displays backbone feature maps
+   - Shows what features the model extracts
+
+3. Gradient-based Feature Importance
+   - Uses gradients to show important image regions
+   - Similar to SHAP but using model gradients
+
+INTERPRETATION GUIDE:
+----------------------------------------
+1. RPN Proposals:
+   - Green box: Highest confidence proposal
+   - Yellow boxes: Next 2 proposals
+   - Red boxes: Remaining proposals
+
+2. Feature Importance:
+   - Warmer colors = more important regions
+   - These regions influence proposal generation most
+   - Compare with original image to understand features
+
+============================================================
+ANALYSIS COMPLETE
+============================================================

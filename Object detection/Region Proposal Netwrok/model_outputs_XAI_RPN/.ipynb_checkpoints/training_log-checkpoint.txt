@@ -1,0 +1,10 @@
+Epoch 1 | Loss: 0.0453
+Epoch 2 | Loss: 0.0206
+Epoch 3 | Loss: 0.0174
+Epoch 4 | Loss: 0.0162
+Epoch 5 | Loss: 0.0144
+Epoch 1 | Loss: 0.0450
+Epoch 2 | Loss: 0.0207
+Epoch 3 | Loss: 0.0176
+Epoch 4 | Loss: 0.0163
+Epoch 5 | Loss: 0.0151
