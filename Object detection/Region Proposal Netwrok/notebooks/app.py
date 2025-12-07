@@ -18,7 +18,7 @@ st.set_page_config(
 # Configuration
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
-OUTPUT_FOLDER = "model_outputs"
+OUTPUT_FOLDER = "../model_outputs"
 RPN_PROPOSALS_FOLDER = os.path.join(OUTPUT_FOLDER, "rpn_proposals")
 
 # Create folders if they don't exist
@@ -671,14 +671,15 @@ def create_get_started_section():
         st.markdown("### 🎯 Project Structure")
         st.markdown("""
         ```
-        computer-vision/
+        computer-vision/Region Proposal Network
         ├── dataset/
         │   ├── images/
         │   └── annotations/
         ├── model_outputs/
         │   ├── rpn_proposals/
         │   └── training_logs/
-        ├── app.py
+        ├── notebooks/
+            ├── app.py
         └── requirements.txt
         ```
         """)
