@@ -1,0 +1,197 @@
+2025-12-08 09:49:44,617 INFO    MainThread:20467 [wandb_setup.py:_flush():80] Current SDK version is 0.23.1
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_setup.py:_flush():80] Configure stats pid to 20467
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_setup.py:_flush():80] Loading settings from /home/hossein-simchi/.config/wandb/settings
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_setup.py:_flush():80] Loading settings from /home/hossein-simchi/ML/computer-vision/Object detection/Region Proposal Netwrok/notebooks/wandb/settings
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_init.py:setup_run_log_directory():714] Logging user logs to /home/hossein-simchi/ML/computer-vision/Object detection/Region Proposal Netwrok/notebooks/wandb/run-20251208_094944-xnwj1ip7/logs/debug.log
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_init.py:setup_run_log_directory():715] Logging internal logs to /home/hossein-simchi/ML/computer-vision/Object detection/Region Proposal Netwrok/notebooks/wandb/run-20251208_094944-xnwj1ip7/logs/debug-internal.log
+2025-12-08 09:49:44,618 INFO    MainThread:20467 [wandb_init.py:monkeypatch_ipython():633] configuring jupyter hooks <wandb.sdk.wandb_init._WandbInit object at 0x7567d2b5d7c0>
+2025-12-08 09:49:44,619 INFO    MainThread:20467 [wandb_init.py:init():841] calling init triggers
+2025-12-08 09:49:44,619 INFO    MainThread:20467 [wandb_init.py:init():846] wandb.init called with sweep_config: {}
+config: {'epochs': 5, 'batch_size': 8, 'lr': 0.001, 'backbone': 'resnet18', 'input_size': '224x224', '_wandb': {}}
+2025-12-08 09:49:44,619 INFO    MainThread:20467 [wandb_init.py:init():889] starting backend
+2025-12-08 09:49:44,864 INFO    MainThread:20467 [wandb_init.py:init():892] sending inform_init request
+2025-12-08 09:49:44,871 INFO    MainThread:20467 [wandb_init.py:init():900] backend started and connected
+2025-12-08 09:49:44,874 INFO    MainThread:20467 [wandb_run.py:_label_probe_notebook():1334] probe notebook
+2025-12-08 09:49:44,875 INFO    MainThread:20467 [wandb_run.py:_label_probe_notebook():1344] Unable to probe notebook: 'NoneType' object has no attribute 'get'
+2025-12-08 09:49:44,875 INFO    MainThread:20467 [wandb_init.py:init():970] updated telemetry
+2025-12-08 09:49:44,974 INFO    MainThread:20467 [wandb_init.py:init():994] communicating run to backend with 90.0 second timeout
+2025-12-08 09:50:12,051 INFO    Thread-5 (wrapped_target):20467 [retry.py:__call__():164] [no run ID] Retry attempt failed:
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connection.py", line 796, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connection.py", line 975, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 483, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 527, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1042, in _create
+    self.do_handshake()
+  File "/usr/lib/python3.12/ssl.py", line 1320, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLEOFError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/lib/retry.py", line 157, in __call__
+    result = self._call_fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/internal/internal_api.py", line 391, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/lib/gql_request.py", line 70, in execute
+    request = self.session.post(self.url, **post_args)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 637, in post
+    return self.request("POST", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/adapters.py", line 675, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))
+2025-12-08 09:50:55,089 INFO    MainThread:20467 [wandb_init.py:init():1041] starting run threads in backend
+2025-12-08 09:50:55,274 INFO    MainThread:20467 [wandb_run.py:_console_start():2521] atexit reg
+2025-12-08 09:50:55,274 INFO    MainThread:20467 [wandb_run.py:_redirect():2369] redirect: wrap_raw
+2025-12-08 09:50:55,274 INFO    MainThread:20467 [wandb_run.py:_redirect():2438] Wrapping output streams.
+2025-12-08 09:50:55,274 INFO    MainThread:20467 [wandb_run.py:_redirect():2461] Redirects installed.
+2025-12-08 09:50:55,277 INFO    MainThread:20467 [wandb_init.py:init():1081] run started, returning control to user process
+2025-12-08 09:50:58,479 INFO    MainThread:20467 [wandb_init.py:_post_run_cell_hook():603] [no run ID] resuming backend
+2025-12-08 09:55:11,493 INFO    MainThread:20467 [jupyter.py:save_ipynb():359] [no run ID] not saving jupyter notebook
+2025-12-08 09:55:11,494 INFO    MainThread:20467 [wandb_init.py:_pre_run_cell_hook():592] [no run ID] pausing backend
+2025-12-08 09:55:21,517 INFO    MainThread:20467 [wandb_run.py:_finish():2287] finishing run hsimchi74-shahid-behesti-university/rpn-training/xnwj1ip7
+2025-12-08 09:55:21,519 INFO    MainThread:20467 [jupyter.py:save_history():435] not saving jupyter history
+2025-12-08 09:55:21,519 INFO    MainThread:20467 [jupyter.py:save_ipynb():359] not saving jupyter notebook
+2025-12-08 09:55:21,519 INFO    MainThread:20467 [wandb_init.py:_jupyter_teardown():618] cleaning up jupyter logic
+2025-12-08 09:55:21,519 INFO    MainThread:20467 [wandb_run.py:_atexit_cleanup():2486] got exitcode: 0
+2025-12-08 09:55:21,520 INFO    MainThread:20467 [wandb_run.py:_restore():2468] restore
+2025-12-08 09:55:21,520 INFO    MainThread:20467 [wandb_run.py:_restore():2474] restore done
+2025-12-08 09:55:48,846 INFO    Thread-7 (wrapped_target):20467 [retry.py:__call__():164] [no run ID] Retry attempt failed:
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 1093, in _validate_conn
+    conn.connect()
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connection.py", line 796, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connection.py", line 975, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 483, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/ssl_.py", line 527, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 455, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1042, in _create
+    self.do_handshake()
+  File "/usr/lib/python3.12/ssl.py", line 1320, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLEOFError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 787, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/adapters.py", line 644, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/connectionpool.py", line 841, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/lib/retry.py", line 157, in __call__
+    result = self._call_fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/internal/internal_api.py", line 391, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/wandb/sdk/lib/gql_request.py", line 70, in execute
+    request = self.session.post(self.url, **post_args)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 637, in post
+    return self.request("POST", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/hossein-simchi/jupyter_env/lib/python3.12/site-packages/requests/adapters.py", line 675, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='api.wandb.ai', port=443): Max retries exceeded with url: /graphql (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1000)')))
+2025-12-08 10:00:04,653 INFO    MainThread:20467 [wandb_run.py:_footer_sync_info():3862] logging synced files
