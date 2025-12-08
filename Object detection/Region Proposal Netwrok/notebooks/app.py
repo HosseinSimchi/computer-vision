@@ -20,6 +20,7 @@ st.set_page_config(
 # Configuration
 # ---------------------------
 GITHUB_REPO_URL = "https://github.com/HosseinSimchi/computer-vision"
+WANDB_URL = "http://wandb.ai/hsimchi74-shahid-behesti-university/rpn-training"
 
 # For Streamlit Cloud compatibility
 OUTPUT_FOLDER = "./model_outputs"
@@ -816,6 +817,25 @@ def create_source_code_section():
         """)
 
 # ---------------------------
+# WandB Section
+# ---------------------------
+def create_wandb_section():
+    """Create Weights & Biases link section"""
+    st.markdown('<div class="section-header">📈 Weights & Biases (wandB)</div>', unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div style='background: #f8fafc; padding: 2rem; border-radius: 12px; border-left: 4px solid #764ba2;'>
+        <h3 style='color: #2d3748; margin-bottom: 1rem;'>📊 wandB Dashboard</h3>
+        <p style='color: #4a5568; font-size: 1.1rem;'>
+            Track experiments, training progress, and metrics in real-time:
+            <a href='{WANDB_URL}' target='_blank' style='color: #667eea; font-weight: 600;'>
+                {WANDB_URL}
+            </a>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ---------------------------
 # Footer
 # ---------------------------
 def create_footer():
@@ -877,6 +897,11 @@ def main():
     
     # Source Code Section
     create_source_code_section()
+    
+    st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
+    
+    # wandB Section
+    create_wandb_section()
     
     # Footer
     create_footer()

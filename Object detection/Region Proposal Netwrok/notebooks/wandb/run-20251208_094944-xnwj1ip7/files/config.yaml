@@ -1,0 +1,58 @@
+_wandb:
+    value:
+        cli_version: 0.23.1
+        e:
+            623i5jahq0u7y3v5k42jdblpxg84crz1:
+                codePath: notebooks/_RPN_wandb.ipynb
+                cpu_count: 4
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "489997189120"
+                        used: "100075175936"
+                executable: /home/hossein-simchi/jupyter_env/bin/python3
+                git:
+                    commit: fb8c5fb76d867962b28151644f9578823f73abbb
+                    remote: https://github.com/HosseinSimchi/computer-vision.git
+                host: hossein-simchi-NUC8i7BEH
+                memory:
+                    total: "16627445760"
+                os: Linux-6.14.0-36-generic-x86_64-with-glibc2.39
+                program: notebooks/_RPN_wandb.ipynb
+                python: CPython 3.12.3
+                root: /home/hossein-simchi/ML/computer-vision/Object detection/Region Proposal Netwrok/notebooks
+                startedAt: "2025-12-08T06:19:44.613764Z"
+                writerId: 623i5jahq0u7y3v5k42jdblpxg84crz1
+        m: []
+        python_version: 3.12.3
+        t:
+            "1":
+                - 1
+                - 5
+                - 41
+                - 53
+            "2":
+                - 1
+                - 5
+                - 41
+                - 53
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.12.3
+            "5": 0.23.1
+            "8":
+                - 1
+            "12": 0.23.1
+            "13": linux-x86_64
+backbone:
+    value: resnet18
+batch_size:
+    value: 8
+epochs:
+    value: 5
+input_size:
+    value: 224x224
+lr:
+    value: 0.001
